@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Interaktif 30 Soal — Pecahan ke Desimal &amp; Mengurutkan Desimal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Latar belakang titik lembut bernuansa petualangan belajar */
+    .dot-bg {
+      background-color: #eef4ff;
+      background-image: radial-gradient(#bfdbfe 1.35px, transparent 1.35px);
+      background-size: 20px 20px;
+    }
+
+    /* Pecahan susun atas-bawah */
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      line-height: 1.08;
+      margin: 0 0.25rem;
+    }
+    .frac-top {
+      border-bottom: 2.5px solid currentColor;
+      padding: 0 0.42rem 0.14rem 0.42rem;
+    }
+    .frac-bottom {
+      padding: 0.14rem 0.42rem 0 0.42rem;
+    }
+
+    /* Efek kartu angka klik */
+    .num-card {
+      transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease, border-color 0.14s ease;
+    }
+    .num-card:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px -6px rgba(37, 99, 235, 0.28);
+    }
+    .num-card:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    /* Animasi muncul halus untuk umpan balik langsung */
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .feedback-pop {
+      animation: fadeSlide 0.2s ease-out forwards;
+    }
+
+    /* Custom scrollbar tipis pada panel navigasi nomor */
+    .nav-grid::-webkit-scrollbar {
+      width: 6px;
+    }
+    .nav-grid::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="dot-bg text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- Header & Status Penyimpanan -->
+  <header class="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white shadow-lg sticky top-0 z-30 border-b border-white/15">
+    <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="space-y-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight">
+            Quiz 30 Soal: Pecahan &amp; Desimal
+          </h1>
+          <span
+            id="network-status-badge"
+            class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-400/20 text-emerald-100 border border-emerald-300/30"
+          >
+            <span id="network-dot" class="w-2 h-2 rounded-full bg-emerald-300"></span>
+            <span id="network-text">Online · Tersimpan Otomatis</span>
+          </span>
+        </div>
+        <p id="save-status-text" class="text-xs text-sky-100 font-medium">
+          Jawaban tersimpan otomatis di perangkat ini
+        </p>
+      </div>
+
+      <!-- Ringkasan Skor & Reset -->
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div class="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-3.5 py-2 text-right shadow-inner">
+          <div class="text-[11px] uppercase tracking-wider text-sky-100 font-semibold">Benar / Terjawab</div>
+          <div id="header-score" class="text-sm sm:text-base font-extrabold text-amber-300">0 Benar · 0/30</div>
+        </div>
+
+        <button
+          type="button"
+          onclick="requestResetQuiz()"
+          class="bg-rose-500 hover:bg-rose-600 active:scale-95 transition text-white text-xs font-bold px-3.5 py-2.5 rounded-xl cursor-pointer shadow-md"
+        >
+          Reset Quiz
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Modal Konfirmasi Reset (tanpa confirm() bawaan browser) -->
+  <div id="reset-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-slate-200 space-y-4 feedback-pop">
+      <h2 class="text-lg font-extrabold text-slate-900">Hapus Semua Jawaban?</h2>
+      <p class="text-sm text-slate-600">
+        Seluruh jawaban pada 30 soal dan status benar/salah yang tersimpan akan dihapus.
+      </p>
+      <div class="flex justify-end gap-2.5 pt-1">
+        <button
+          type="button"
+          onclick="closeResetModal()"
+          class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-50 cursor-pointer"
+        >
+          Batal
+        </button>
+        <button
+          type="button"
+          onclick="confirmResetQuiz()"
+          class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm cursor-pointer"
+        >
+          Ya, Hapus
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Layout Utama: Panel Navigasi Nomor + Kartu Soal Aktif -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- Panel Navigasi Soal (Kiri di Desktop, Atas di Mobile) -->
+    <aside class="lg:col-span-4 bg-white/95 backdrop-blur rounded-3xl shadow-md border-2 border-indigo-100 p-4 sm:p-5 space-y-4 lg:sticky lg:top-24">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-extrabold uppercase tracking-wider text-slate-700">
+          Navigasi Soal (1–30)
+        </h2>
+        <span id="progress-percent" class="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+          0% Selesai
+        </span>
+      </div>
+
+      <!-- Baris Progres -->
+      <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+        <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-teal-500 transition-all duration-300" style="width: 0%"></div>
+      </div>
+
+      <!-- Legenda Warna Nomor -->
+      <div class="flex flex-wrap gap-3 text-[11px] font-semibold text-slate-600">
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span> Benar
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded bg-rose-500 inline-block"></span> Salah
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded bg-slate-200 border border-slate-300 inline-block"></span> Belum
+        </span>
+      </div>
+
+      <!-- Grid 30 Tombol Nomor Soal -->
+      <div id="nav-grid" class="nav-grid grid grid-cols-6 sm:grid-cols-10 lg:grid-cols-6 gap-2 max-h-60 lg:max-h-none overflow-y-auto pr-0.5">
+        <!-- Diisi otomatis via JavaScript -->
+      </div>
+
+      <!-- Tombol Lompat Cepat ke Soal Belum Dijawab / Salah -->
+      <div class="pt-1 flex gap-2">
+        <button
+          type="button"
+          onclick="jumpToNextUnanswered()"
+          class="flex-1 text-xs font-bold py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition text-slate-700 cursor-pointer"
+        >
+          Soal Belum Diisi
+        </button>
+        <button
+          type="button"
+          onclick="jumpToNextWrong()"
+          class="flex-1 text-xs font-bold py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 transition text-amber-800 border border-amber-200 cursor-pointer"
+        >
+          Cek Jawaban Salah
+        </button>
+      </div>
+    </aside>
+
+    <!-- Area Soal Essay Aktif -->
+    <section class="lg:col-span-8 space-y-4">
+      <div class="bg-white/95 backdrop-blur rounded-3xl shadow-md border-2 border-indigo-100 p-5 sm:p-8 space-y-6">
+
+        <!-- Metadata Soal -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-2.5">
+            <span id="q-number-badge" class="px-3.5 py-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-extrabold shadow-sm">
+              Soal 1 dari 30
+            </span>
+            <span id="q-topic-badge" class="px-3 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-xs font-bold">
+              Pecahan Biasa → Desimal
+            </span>
+          </div>
+          <span id="q-status-pill" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+            Belum dijawab
+          </span>
+        </div>
+
+        <!-- Teks / Matematika Soal -->
+        <div id="q-prompt" class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-relaxed min-h-[4.5rem] flex flex-wrap items-center gap-2 bg-gradient-to-br from-slate-50 to-blue-50/70 border border-slate-200/80 rounded-2xl p-4 sm:p-5">
+          <!-- Diisi via JavaScript -->
+        </div>
+
+        <!-- Mode A: Kolom Jawaban Essay (Soal 1-20) -->
+        <div id="essay-mode-box" class="space-y-2.5">
+          <label for="essay-input" class="block text-xs font-extrabold uppercase tracking-wider text-indigo-700">
+            Jawaban
+          </label>
+          <input
+            id="essay-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            oninput="handleInstantAnswer()"
+            onkeydown="handleInputKeydown(event)"
+            class="w-full px-4 py-3.5 rounded-2xl border-2 border-sky-300 focus:border-indigo-600 focus:outline-none text-lg sm:text-xl font-bold text-slate-900 bg-slate-50 focus:bg-white transition shadow-inner"
+          />
+        </div>
+
+        <!-- Mode B: Kartu Angka Klik untuk Mengurutkan Desimal (Soal 21-30) -->
+        <div id="order-mode-box" class="hidden space-y-4 bg-sky-50/70 border-2 border-sky-200/90 rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-sky-800">
+              Urutan Pilihan
+            </span>
+            <button
+              type="button"
+              onclick="clearOrderSelection()"
+              class="inline-flex items-center gap-1.5 text-xs font-extrabold bg-amber-400 hover:bg-amber-500 active:scale-95 transition text-slate-900 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm"
+            >
+              <span>↺</span>
+              <span>Ulangi</span>
+            </button>
+          </div>
+
+          <!-- Slot Urutan Pilihan Siswa (Klik kartu di slot untuk melepas) -->
+          <div
+            id="order-selected-slot"
+            class="min-h-[3.75rem] bg-white border-2 border-dashed border-sky-300 rounded-2xl p-3 flex flex-wrap items-center gap-2.5"
+          >
+            <!-- Diisi otomatis via JavaScript -->
+          </div>
+
+          <div class="text-xs font-extrabold uppercase tracking-wider text-slate-600 pt-1">
+            Kartu Angka
+          </div>
+
+          <!-- Kartu Angka Sumber untuk Diklik -->
+          <div id="order-cards-pool" class="flex flex-wrap items-center gap-3">
+            <!-- Diisi otomatis via JavaScript -->
+          </div>
+        </div>
+
+        <!-- Kotak Status Benar / Salah Langsung -->
+        <div id="instant-feedback" class="hidden feedback-pop rounded-2xl p-4 border text-sm sm:text-base font-extrabold flex items-center justify-between gap-3">
+          <span id="feedback-text"></span>
+          <span id="feedback-badge" class="text-xs px-2.5 py-1 rounded-full uppercase tracking-wider"></span>
+        </div>
+
+        <!-- Tombol Navigasi Sebelumnya / Selanjutnya -->
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+          <button
+            id="btn-prev"
+            type="button"
+            onclick="goToQuestion(currentQuestionIndex - 1)"
+            class="px-5 py-3 rounded-2xl border border-slate-300 hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition font-bold text-sm text-slate-700 cursor-pointer"
+          >
+            ← Sebelumnya
+          </button>
+
+          <div class="text-xs font-semibold text-slate-400 hidden sm:block">
+            Ketik jawaban untuk melihat Benar / Salah langsung
+          </div>
+
+          <button
+            id="btn-next"
+            type="button"
+            onclick="goToQuestion(currentQuestionIndex + 1)"
+            class="px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition font-bold text-sm text-white cursor-pointer shadow-md"
+          >
+            Selanjutnya →
+          </button>
+        </div>
+      </div>
+
+      <!-- Ringkasan Cepat Kategori Soal -->
+      <div class="bg-white/95 backdrop-blur rounded-3xl shadow-sm border-2 border-indigo-100 p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div class="bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-200 rounded-2xl p-3.5 shadow-2xs">
+          <div class="font-extrabold text-sky-900">Soal 1–10</div>
+          <div class="text-slate-600 mt-0.5 font-medium">Pecahan Biasa ke Desimal</div>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-3.5 shadow-2xs">
+          <div class="font-extrabold text-emerald-900">Soal 11–20</div>
+          <div class="text-slate-600 mt-0.5 font-medium">Pecahan Campuran ke Desimal</div>
+        </div>
+        <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3.5 shadow-2xs">
+          <div class="font-extrabold text-amber-900">Soal 21–30</div>
+          <div class="text-slate-600 mt-0.5 font-medium">Mengurutkan Pecahan Desimal</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    /**
+     * Kunci penyimpanan lokal di browser agar jawaban aman saat
+     * jaringan terputus atau halaman tidak sengaja di-reload.
+     */
+    const STORAGE_KEY = 'quiz_30_pecahan_desimal_v2';
+
+    /**
+     * Helper membuat elemen pecahan susun (pembilang / penyebut).
+     */
+    function frac(top, bottom) {
+      return `<span class="frac"><span class="frac-top">${top}</span><span class="frac-bottom">${bottom}</span></span>`;
+    }
+
+    /**
+     * Bank 30 soal variatif dan berbeda dari contoh materi:
+     * - 1..10: Pecahan biasa ke desimal
+     * - 11..20: Pecahan campuran ke desimal
+     * - 21..30: Mengurutkan pecahan desimal (naik & turun, 2 dan 3 angka koma)
+     */
+    const QUESTIONS = [
+      // 1 - 10: Pecahan Biasa -> Desimal
+      {
+        id: 1,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(1, 2)} menjadi bentuk desimal.`,
+        answers: ['0,5', '0,50']
+      },
+      {
+        id: 2,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(3, 5)} menjadi bentuk desimal.`,
+        answers: ['0,6', '0,60']
+      },
+      {
+        id: 3,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(9, 10)} menjadi bentuk desimal.`,
+        answers: ['0,9', '0,90']
+      },
+      {
+        id: 4,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(13, 20)} menjadi bentuk desimal.`,
+        answers: ['0,65']
+      },
+      {
+        id: 5,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(19, 25)} menjadi bentuk desimal.`,
+        answers: ['0,76']
+      },
+      {
+        id: 6,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(3, 50)} menjadi bentuk desimal.`,
+        answers: ['0,06']
+      },
+      {
+        id: 7,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(27, 50)} menjadi bentuk desimal.`,
+        answers: ['0,54']
+      },
+      {
+        id: 8,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(1, 8)} menjadi bentuk desimal.`,
+        answers: ['0,125']
+      },
+      {
+        id: 9,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(5, 8)} menjadi bentuk desimal.`,
+        answers: ['0,625']
+      },
+      {
+        id: 10,
+        topic: 'Pecahan Biasa → Desimal',
+        type: 'decimal',
+        html: `Ubahlah ${frac(43, 100)} menjadi bentuk desimal.`,
+        answers: ['0,43']
+      },
+
+      // 11 - 20: Pecahan Campuran -> Desimal
+      {
+        id: 11,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 1 ${frac(1, 5)} menjadi bentuk desimal.`,
+        answers: ['1,2', '1,20']
+      },
+      {
+        id: 12,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 4 ${frac(3, 4)} menjadi bentuk desimal.`,
+        answers: ['4,75']
+      },
+      {
+        id: 13,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 5 ${frac(1, 2)} menjadi bentuk desimal.`,
+        answers: ['5,5', '5,50']
+      },
+      {
+        id: 14,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 6 ${frac(9, 20)} menjadi bentuk desimal.`,
+        answers: ['6,45']
+      },
+      {
+        id: 15,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 7 ${frac(4, 25)} menjadi bentuk desimal.`,
+        answers: ['7,16']
+      },
+      {
+        id: 16,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 8 ${frac(7, 10)} menjadi bentuk desimal.`,
+        answers: ['8,7', '8,70']
+      },
+      {
+        id: 17,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 9 ${frac(11, 50)} menjadi bentuk desimal.`,
+        answers: ['9,22']
+      },
+      {
+        id: 18,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 10 ${frac(3, 8)} menjadi bentuk desimal.`,
+        answers: ['10,375']
+      },
+      {
+        id: 19,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 12 ${frac(17, 20)} menjadi bentuk desimal.`,
+        answers: ['12,85']
+      },
+      {
+        id: 20,
+        topic: 'Pecahan Campuran → Desimal',
+        type: 'decimal',
+        html: `Ubahlah 15 ${frac(9, 25)} menjadi bentuk desimal.`,
+        answers: ['15,36']
+      },
+
+      // 21 - 30: Mengurutkan Pecahan Desimal (Kartu Angka Klik)
+      {
+        id: 21,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span> ke <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span>:`,
+        cards: ['0,9', '0,18', '0,64'],
+        expectedOrder: ['0,18', '0,64', '0,9']
+      },
+      {
+        id: 22,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span> ke <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span>:`,
+        cards: ['0,42', '0,85', '0,7'],
+        expectedOrder: ['0,85', '0,7', '0,42']
+      },
+      {
+        id: 23,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span> ke <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span>:`,
+        cards: ['2,4', '1,95', '2,08'],
+        expectedOrder: ['1,95', '2,08', '2,4']
+      },
+      {
+        id: 24,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span> ke <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span>:`,
+        cards: ['3,3', '3,09', '3,28'],
+        expectedOrder: ['3,3', '3,28', '3,09']
+      },
+      {
+        id: 25,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span> ke <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span>:`,
+        cards: ['0,05', '0,5', '0,25'],
+        expectedOrder: ['0,05', '0,25', '0,5']
+      },
+      {
+        id: 26,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span> ke <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span>:`,
+        cards: ['4,6', '5,02', '4,85'],
+        expectedOrder: ['5,02', '4,85', '4,6']
+      },
+      {
+        id: 27,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span> ke <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span>:`,
+        cards: ['0,125', '0,2', '0,075'],
+        expectedOrder: ['0,075', '0,125', '0,2']
+      },
+      {
+        id: 28,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span> ke <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span>:`,
+        cards: ['1,75', '1,8', '1,625'],
+        expectedOrder: ['1,8', '1,75', '1,625']
+      },
+      {
+        id: 29,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span> ke <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span>:`,
+        cards: ['6,15', '6,5', '6,05', '6,35'],
+        expectedOrder: ['6,05', '6,15', '6,35', '6,5']
+      },
+      {
+        id: 30,
+        topic: 'Mengurutkan Desimal',
+        type: 'order',
+        html: `Urutkan dari yang <span class="text-rose-600 underline decoration-2 underline-offset-4">TERBESAR</span> ke <span class="text-blue-600 underline decoration-2 underline-offset-4">TERKECIL</span>:`,
+        cards: ['8,04', '7,9', '8,4', '7,98'],
+        expectedOrder: ['8,4', '8,04', '7,98', '7,9']
+      }
+    ];
+
+    /**
+     * State aplikasi:
+     * - currentQuestionIndex: nomor indeks soal aktif (0..29)
+     * - userAnswers:
+     *     - untuk soal 'decimal': string input siswa
+     *     - untuk soal 'order': array indeks kartu yang diklik (misal [1, 2, 0])
+     */
+    let currentQuestionIndex = 0;
+    let userAnswers = {};
+
+    /**
+     * Menormalkan angka desimal (mendukung koma maupun titik, serta menghapus nol di belakang koma).
+     */
+    function normalizeDecimalToken(raw) {
+      if (typeof raw !== 'string') return '';
+      let s = raw.trim().replace(/\s+/g, '').replace('.', ',');
+      if (!s) return '';
+      // Jika siswa menulis ",5" maka ubah menjadi "0,5"
+      if (s.startsWith(',')) {
+        s = '0' + s;
+      }
+      if (s.includes(',')) {
+        const parts = s.split(',');
+        const intPart = parts[0] || '0';
+        const fracPart = (parts[1] || '').replace(/0+$/, '');
+        return fracPart.length > 0 ? `${intPart},${fracPart}` : intPart;
+      }
+      return s;
+    }
+
+    /**
+     * Memecah teks urutan desimal menjadi daftar token bilangan.
+     */
+    function parseOrderTokens(rawText, expectedLength = 0) {
+      if (typeof rawText !== 'string' || !rawText.trim()) return [];
+      const normalized = rawText.trim().replace(/\./g, ',').replace(/→|->|;/g, ' ');
+      const spaceTokens = normalized.split(/[\s]+/).filter(Boolean);
+      if (expectedLength > 0 && spaceTokens.length === 1 && normalized.includes(',')) {
+        const commaParts = normalized.split(',').map((p) => p.trim()).filter(Boolean);
+        if (commaParts.length === expectedLength * 2) {
+          const paired = [];
+          for (let i = 0; i < commaParts.length; i += 2) {
+            paired.push(`${commaParts[i]},${commaParts[i + 1]}`);
+          }
+          return paired;
+        }
+      }
+      return spaceTokens;
+    }
+
+    /**
+     * Menyimpan state kuis ke localStorage secara aman.
+     */
+    function saveState() {
+      try {
+        const payload = {
+          answers: userAnswers,
+          currentIndex: currentQuestionIndex,
+          updatedAt: Date.now()
+        };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        const saveEl = document.getElementById('save-status-text');
+        if (saveEl) {
+          saveEl.textContent = 'Jawaban tersimpan otomatis di perangkat ini';
+        }
+      } catch (err) {
+        console.warn('Tidak dapat menyimpan ke localStorage:', err);
+      }
+    }
+
+    /**
+     * Memperbarui indikator status jaringan (Online / Offline).
+     */
+    function updateNetworkStatus() {
+      const badge = document.getElementById('network-status-badge');
+      const dot = document.getElementById('network-dot');
+      const text = document.getElementById('network-text');
+      if (!badge || !dot || !text) return;
+
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (isOnline) {
+        badge.className = 'inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-400/20 text-emerald-100 border border-emerald-300/30';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-300';
+        text.textContent = 'Online · Tersimpan Otomatis';
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-400/25 text-amber-100 border border-amber-300/40';
+        dot.className = 'w-2 h-2 rounded-full bg-amber-300';
+        text.textContent = 'Offline · Aman di Perangkat';
+      }
+    }
+
+    /**
+     * Memuat state tersimpan dari localStorage secara aman.
+     */
+    function loadSavedState() {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.answers && typeof parsed.answers === 'object') {
+            userAnswers = parsed.answers;
+          }
+          if (typeof parsed.currentIndex === 'number' && parsed.currentIndex >= 0 && parsed.currentIndex < QUESTIONS.length) {
+            currentQuestionIndex = parsed.currentIndex;
+          }
+        }
+      } catch (err) {
+        console.warn('Tidak dapat membaca penyimpanan lokal:', err);
+      }
+    }
+
+    /**
+     * Mengambil daftar nilai desimal berurutan dari jawaban kartu soal 'order'.
+     */
+    function getSelectedOrderValues(question, rawAnswer) {
+      if (Array.isArray(rawAnswer)) {
+        return rawAnswer
+          .filter((idx) => typeof idx === 'number' && idx >= 0 && idx < question.cards.length)
+          .map((idx) => question.cards[idx]);
+      }
+      if (typeof rawAnswer === 'string' && rawAnswer.trim()) {
+        return parseOrderTokens(rawAnswer, question.expectedOrder.length);
+      }
+      return [];
+    }
+
+    /**
+     * Mengevaluasi jawaban siswa untuk satu soal.
+     * Mengembalikan: 'unanswered' | 'correct' | 'wrong'
+     */
+    function evaluateQuestion(question, rawValue) {
+      if (question.type === 'decimal') {
+        const trimmed = (typeof rawValue === 'string' ? rawValue : '').trim();
+        if (!trimmed) return 'unanswered';
+        const userNorm = normalizeDecimalToken(trimmed);
+        const acceptedNorm = question.answers.map(normalizeDecimalToken);
+        return acceptedNorm.includes(userNorm) ? 'correct' : 'wrong';
+      }
+
+      if (question.type === 'order') {
+        const selectedIndices = Array.isArray(rawValue) ? rawValue : [];
+        if (selectedIndices.length === 0) return 'unanswered';
+
+        const tokens = getSelectedOrderValues(question, rawValue).map(normalizeDecimalToken);
+        const expectedNorm = question.expectedOrder.map(normalizeDecimalToken);
+        if (tokens.length !== expectedNorm.length) return 'wrong';
+        return expectedNorm.every((exp, idx) => tokens[idx] === exp) ? 'correct' : 'wrong';
+      }
+
+      return 'unanswered';
+    }
+
+    /**
+     * Merender antarmuka kartu angka klik untuk soal mengurutkan desimal.
+     */
+    function renderOrderCardsUI(question, rawValue) {
+      const slotEl = document.getElementById('order-selected-slot');
+      const poolEl = document.getElementById('order-cards-pool');
+      if (!slotEl || !poolEl) return;
+
+      const selectedIndices = Array.isArray(rawValue)
+        ? rawValue.filter((idx) => typeof idx === 'number' && idx >= 0 && idx < question.cards.length)
+        : [];
+
+      // Render slot urutan pilihan
+      slotEl.innerHTML = '';
+      if (selectedIndices.length === 0) {
+        const emptyMsg = document.createElement('span');
+        emptyMsg.className = 'text-sm font-semibold text-slate-400 select-none';
+        emptyMsg.textContent = 'Klik kartu angka di bawah...';
+        slotEl.appendChild(emptyMsg);
+      } else {
+        selectedIndices.forEach((cardIdx, pos) => {
+          const val = question.cards[cardIdx];
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className =
+            'num-card inline-flex items-center gap-2 bg-gradient-to-b from-blue-500 to-blue-600 text-white border-2 border-blue-700 font-extrabold text-base sm:text-lg px-4 py-2 rounded-2xl shadow-sm cursor-pointer';
+          chip.setAttribute('aria-label', `Lepas kartu ${val}`);
+          chip.innerHTML = `
+            <span class="w-5 h-5 rounded-full bg-white/25 text-xs flex items-center justify-center">${pos + 1}</span>
+            <span>${val}</span>
+            <span class="text-xs text-blue-100">×</span>
+          `;
+          chip.addEventListener('click', () => removeSelectedOrderCard(pos));
+          slotEl.appendChild(chip);
+        });
+      }
+
+      // Render kumpulan kartu angka sumber
+      poolEl.innerHTML = '';
+      question.cards.forEach((val, cardIdx) => {
+        const isUsed = selectedIndices.includes(cardIdx);
+        const cardBtn = document.createElement('button');
+        cardBtn.type = 'button';
+        cardBtn.disabled = isUsed;
+        cardBtn.textContent = val;
+        cardBtn.setAttribute('aria-label', `Pilih angka ${val}`);
+
+        if (isUsed) {
+          cardBtn.className =
+            'bg-slate-100 text-slate-300 border-2 border-slate-200 font-extrabold text-lg sm:text-xl px-5 py-3 rounded-2xl cursor-not-allowed select-none';
+        } else {
+          cardBtn.className =
+            'num-card bg-white hover:bg-blue-50 text-blue-700 border-2 border-sky-400 font-extrabold text-lg sm:text-xl px-5 py-3 rounded-2xl shadow-sm cursor-pointer select-none';
+          cardBtn.addEventListener('click', () => pickOrderCard(cardIdx));
+        }
+
+        poolEl.appendChild(cardBtn);
+      });
+    }
+
+    /**
+     * Menambahkan kartu angka yang diklik ke urutan pilihan.
+     */
+    function pickOrderCard(cardIdx) {
+      const q = QUESTIONS[currentQuestionIndex];
+      if (!q || q.type !== 'order') return;
+
+      const currentList = Array.isArray(userAnswers[q.id]) ? [...userAnswers[q.id]] : [];
+      if (currentList.includes(cardIdx)) return;
+
+      currentList.push(cardIdx);
+      userAnswers[q.id] = currentList;
+
+      saveState();
+      renderOrderCardsUI(q, userAnswers[q.id]);
+      renderInstantFeedback(q, userAnswers[q.id]);
+      renderNavigationGrid();
+      updateSummaryStats();
+    }
+
+    /**
+     * Melepas satu kartu angka dari urutan pilihan berdasarkan posisinya.
+     */
+    function removeSelectedOrderCard(position) {
+      const q = QUESTIONS[currentQuestionIndex];
+      if (!q || q.type !== 'order') return;
+
+      const currentList = Array.isArray(userAnswers[q.id]) ? [...userAnswers[q.id]] : [];
+      if (position < 0 || position >= currentList.length) return;
+
+      currentList.splice(position, 1);
+      if (currentList.length === 0) {
+        delete userAnswers[q.id];
+      } else {
+        userAnswers[q.id] = currentList;
+      }
+
+      saveState();
+      renderOrderCardsUI(q, userAnswers[q.id]);
+      renderInstantFeedback(q, userAnswers[q.id]);
+      renderNavigationGrid();
+      updateSummaryStats();
+    }
+
+    /**
+     * Menghapus seluruh kartu yang sudah dipilih pada soal urutan aktif.
+     */
+    function clearOrderSelection() {
+      const q = QUESTIONS[currentQuestionIndex];
+      if (!q || q.type !== 'order') return;
+
+      delete userAnswers[q.id];
+      saveState();
+      renderOrderCardsUI(q, undefined);
+      renderInstantFeedback(q, undefined);
+      renderNavigationGrid();
+      updateSummaryStats();
+    }
+
+    /**
+     * Membangun 30 tombol navigasi nomor soal dan memperbarui warnanya.
+     */
+    function renderNavigationGrid() {
+      const grid = document.getElementById('nav-grid');
+      if (!grid) return;
+
+      grid.innerHTML = '';
+
+      QUESTIONS.forEach((q, idx) => {
+        const status = evaluateQuestion(q, userAnswers[q.id]);
+        const isCurrent = idx === currentQuestionIndex;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = String(q.id);
+        btn.setAttribute('aria-label', `Soal nomor ${q.id}`);
+
+        let colorClasses = 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200';
+        if (status === 'correct') {
+          colorClasses = 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600';
+        } else if (status === 'wrong') {
+          colorClasses = 'bg-rose-500 text-white border-rose-600 hover:bg-rose-600';
+        }
+
+        const activeRing = isCurrent ? 'ring-2 ring-offset-2 ring-indigo-600 font-extrabold scale-105' : 'font-bold';
+
+        btn.className = `h-10 rounded-xl border text-xs transition active:scale-95 cursor-pointer flex items-center justify-center ${colorClasses} ${activeRing}`;
+        btn.addEventListener('click', () => goToQuestion(idx));
+
+        grid.appendChild(btn);
+      });
+    }
+
+    /**
+     * Memperbarui statistik skor, jumlah terjawab, dan progress bar.
+     */
+    function updateSummaryStats() {
+      let correctCount = 0;
+      let answeredCount = 0;
+
+      QUESTIONS.forEach((q) => {
+        const st = evaluateQuestion(q, userAnswers[q.id]);
+        if (st === 'correct') {
+          correctCount++;
+          answeredCount++;
+        } else if (st === 'wrong') {
+          answeredCount++;
+        }
+      });
+
+      const scoreEl = document.getElementById('header-score');
+      if (scoreEl) {
+        scoreEl.textContent = `${correctCount} Benar · ${answeredCount}/${QUESTIONS.length}`;
+      }
+
+      const pct = Math.round((answeredCount / QUESTIONS.length) * 100);
+      const pctEl = document.getElementById('progress-percent');
+      const barEl = document.getElementById('progress-bar');
+      if (pctEl) pctEl.textContent = `${pct}% Selesai`;
+      if (barEl) barEl.style.width = `${pct}%`;
+    }
+
+    /**
+     * Menampilkan umpan balik Benar / Salah secara langsung pada soal aktif.
+     */
+    function renderInstantFeedback(question, rawValue) {
+      const box = document.getElementById('instant-feedback');
+      const textEl = document.getElementById('feedback-text');
+      const badgeEl = document.getElementById('feedback-badge');
+      const statusPill = document.getElementById('q-status-pill');
+      const inputEl = document.getElementById('essay-input');
+
+      if (!box || !textEl || !badgeEl || !statusPill || !inputEl) return;
+
+      const status = evaluateQuestion(question, rawValue);
+
+      inputEl.classList.remove('border-slate-300', 'border-emerald-500', 'border-rose-500', 'focus:border-indigo-600');
+
+      if (status === 'unanswered') {
+        box.classList.add('hidden');
+        inputEl.classList.add('border-slate-300', 'focus:border-indigo-600');
+        statusPill.className = 'text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600';
+        statusPill.textContent = 'Belum dijawab';
+        return;
+      }
+
+      box.classList.remove('hidden');
+      box.classList.remove('bg-emerald-50', 'border-emerald-300', 'text-emerald-900', 'bg-rose-50', 'border-rose-300', 'text-rose-900');
+      badgeEl.classList.remove('bg-emerald-600', 'text-white', 'bg-rose-600');
+
+      if (status === 'correct') {
+        box.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
+        badgeEl.classList.add('bg-emerald-600', 'text-white');
+        badgeEl.textContent = 'BENAR';
+        textEl.textContent = 'Jawaban kamu BENAR.';
+        inputEl.classList.add('border-emerald-500');
+        statusPill.className = 'text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800';
+        statusPill.textContent = 'Benar';
+      } else {
+        box.classList.add('bg-rose-50', 'border-rose-300', 'text-rose-900');
+        badgeEl.classList.add('bg-rose-600', 'text-white');
+        badgeEl.textContent = 'SALAH';
+        textEl.textContent = 'Jawaban kamu masih SALAH.';
+        inputEl.classList.add('border-rose-500');
+        statusPill.className = 'text-xs font-bold px-3 py-1 rounded-full bg-rose-100 text-rose-800';
+        statusPill.textContent = 'Salah';
+      }
+    }
+
+    /**
+     * Merender soal aktif ke layar.
+     */
+    function renderCurrentQuestion() {
+      const q = QUESTIONS[currentQuestionIndex];
+      if (!q) return;
+
+      const numBadge = document.getElementById('q-number-badge');
+      const topicBadge = document.getElementById('q-topic-badge');
+      const promptEl = document.getElementById('q-prompt');
+      const essayBox = document.getElementById('essay-mode-box');
+      const orderBox = document.getElementById('order-mode-box');
+      const inputEl = document.getElementById('essay-input');
+      const prevBtn = document.getElementById('btn-prev');
+      const nextBtn = document.getElementById('btn-next');
+
+      if (numBadge) numBadge.textContent = `Soal ${q.id} dari ${QUESTIONS.length}`;
+      if (topicBadge) topicBadge.textContent = q.topic;
+      if (promptEl) promptEl.innerHTML = q.html;
+
+      if (q.type === 'order') {
+        if (essayBox) essayBox.classList.add('hidden');
+        if (orderBox) orderBox.classList.remove('hidden');
+        renderOrderCardsUI(q, userAnswers[q.id]);
+      } else {
+        if (orderBox) orderBox.classList.add('hidden');
+        if (essayBox) essayBox.classList.remove('hidden');
+        if (inputEl) {
+          inputEl.value = typeof userAnswers[q.id] === 'string' ? userAnswers[q.id] : '';
+        }
+      }
+
+      if (prevBtn) prevBtn.disabled = currentQuestionIndex === 0;
+      if (nextBtn) nextBtn.disabled = currentQuestionIndex === QUESTIONS.length - 1;
+
+      renderInstantFeedback(q, userAnswers[q.id]);
+      renderNavigationGrid();
+      updateSummaryStats();
+    }
+
+    /**
+     * Dipanggil langsung setiap kali pengguna mengetik atau mengubah jawaban essay.
+     */
+    function handleInstantAnswer() {
+      try {
+        const q = QUESTIONS[currentQuestionIndex];
+        const inputEl = document.getElementById('essay-input');
+        if (!q || !inputEl) return;
+
+        userAnswers[q.id] = inputEl.value;
+        saveState();
+        renderInstantFeedback(q, inputEl.value);
+        renderNavigationGrid();
+        updateSummaryStats();
+      } catch (err) {
+        console.error('Gagal memproses jawaban langsung:', err);
+      }
+    }
+
+    /**
+     * Navigasi keyboard: tekan Enter untuk lanjut ke soal berikutnya.
+     */
+    function handleInputKeydown(event) {
+      if (event.key === 'Enter' && currentQuestionIndex < QUESTIONS.length - 1) {
+        event.preventDefault();
+        goToQuestion(currentQuestionIndex + 1);
+      }
+    }
+
+    /**
+     * Berpindah ke nomor soal tertentu berdasarkan index (0..29).
+     */
+    function goToQuestion(index) {
+      if (index < 0 || index >= QUESTIONS.length) return;
+      currentQuestionIndex = index;
+      saveState();
+      renderCurrentQuestion();
+      const q = QUESTIONS[currentQuestionIndex];
+      if (q && q.type !== 'order') {
+        const inputEl = document.getElementById('essay-input');
+        if (inputEl) inputEl.focus();
+      }
+    }
+
+    /**
+     * Lompat ke soal berikutnya yang belum dijawab.
+     */
+    function jumpToNextUnanswered() {
+      for (let offset = 1; offset <= QUESTIONS.length; offset++) {
+        const idx = (currentQuestionIndex + offset) % QUESTIONS.length;
+        const q = QUESTIONS[idx];
+        if (evaluateQuestion(q, userAnswers[q.id]) === 'unanswered') {
+          goToQuestion(idx);
+          return;
+        }
+      }
+    }
+
+    /**
+     * Lompat ke soal berikutnya yang jawabannya masih salah.
+     */
+    function jumpToNextWrong() {
+      for (let offset = 1; offset <= QUESTIONS.length; offset++) {
+        const idx = (currentQuestionIndex + offset) % QUESTIONS.length;
+        const q = QUESTIONS[idx];
+        if (evaluateQuestion(q, userAnswers[q.id]) === 'wrong') {
+          goToQuestion(idx);
+          return;
+        }
+      }
+    }
+
+    /**
+     * Membuka / menutup modal konfirmasi reset.
+     */
+    function requestResetQuiz() {
+      const modal = document.getElementById('reset-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      const modal = document.getElementById('reset-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    /**
+     * Menghapus seluruh jawaban tersimpan dan kembali ke soal 1.
+     */
+    function confirmResetQuiz() {
+      try {
+        userAnswers = {};
+        currentQuestionIndex = 0;
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch (err) {
+        console.warn('Gagal menghapus penyimpanan lokal:', err);
+      }
+      closeResetModal();
+      renderCurrentQuestion();
+    }
+
+    // Event listener status jaringan & penyimpanan sebelum halaman ditutup/direload
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    window.addEventListener('beforeunload', saveState);
+
+    // Inisialisasi aplikasi saat halaman dimuat
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedState();
+      updateNetworkStatus();
+      renderCurrentQuestion();
+    });
+  </script>
+</body>
+</html>
